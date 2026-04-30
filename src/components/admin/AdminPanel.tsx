@@ -73,33 +73,45 @@ function LoginScreen({ onLogin }: { onLogin: () => void }) {
 }
 
 // ── FOTOĞRAF YÜKLEYİCİ ───────────────────────────────────────
+// itemId verilirse fotoğraf yüklenince direkt DB'ye kaydeder (autoSave)
 function ImageUploader({
   itemId,
   currentUrl,
   onUploaded,
+  autoSave = false,
 }: {
   itemId: string;
   currentUrl?: string | null;
   onUploaded: (url: string | null) => void;
+  autoSave?: boolean;
 }) {
   const supabase = createClient();
   const fileRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [preview, setPreview] = useState<string | null>(currentUrl || null);
 
+  // currentUrl dışarıdan değişirse preview'u güncelle
+  useEffect(() => {
+    setPreview(currentUrl || null);
+  }, [currentUrl]);
+
   const handleFile = async (file: File) => {
     if (!file.type.startsWith("image/")) return;
     setUploading(true);
     const ext = file.name.split(".").pop();
     const path = `items/${itemId}.${ext}`;
-    const { error } = await supabase.storage
+    const { error: uploadError } = await supabase.storage
       .from("menu-images")
       .upload(path, file, { upsert: true });
-    if (!error) {
+    if (!uploadError) {
       const { data } = supabase.storage.from("menu-images").getPublicUrl(path);
       const url = data.publicUrl + "?t=" + Date.now();
       setPreview(url);
       onUploaded(url);
+      // autoSave: fotoğrafı hemen DB'ye kaydet, Kaydet butonuna gerek yok
+      if (autoSave) {
+        await supabase.from("menu_items").update({ image_url: url }).eq("id", itemId);
+      }
     }
     setUploading(false);
   };
@@ -107,6 +119,9 @@ function ImageUploader({
   const handleRemove = async () => {
     setPreview(null);
     onUploaded(null);
+    if (autoSave) {
+      await supabase.from("menu_items").update({ image_url: null }).eq("id", itemId);
+    }
   };
 
   return (
@@ -182,13 +197,6 @@ function MenuItemRow({
     <div className={`rounded-xl border-2 overflow-hidden transition-all
       ${item.is_available ? "border-gray-100 bg-gray-50" : "border-red-100 bg-red-50 opacity-60"}`}>
       
-      {/* Fotoğraf varsa göster */}
-      {!editing && item.image_url && (
-        <div className="relative w-full h-28">
-          <Image src={item.image_url} alt={item.name} fill className="object-cover" />
-        </div>
-      )}
-
       <div className="p-3">
         {editing ? (
           <div className="space-y-2">
@@ -211,7 +219,7 @@ function MenuItemRow({
                   placeholder="Fiyat ₺" />
               )}
             </div>
-            <ImageUploader itemId={item.id} currentUrl={imageUrl} onUploaded={setImageUrl} />
+            <ImageUploader itemId={item.id} currentUrl={imageUrl} onUploaded={setImageUrl} autoSave={true} />
             <div className="flex gap-2 pt-1">
               <button onClick={handleSave}
                 className="flex-1 bg-brand-brown text-brand-yellow px-3 py-2 rounded-lg text-sm font-body font-bold flex items-center justify-center gap-1 hover:bg-brand-brown-light transition-colors">
@@ -224,7 +232,10 @@ function MenuItemRow({
             </div>
           </div>
         ) : (
-          <div className="flex items-center gap-2">
+          <div className="space-y-2">
+            {/* Normal mod: fotoğraf doğrudan buradan yüklenip anında kaydedilir */}
+            <ImageUploader itemId={item.id} currentUrl={imageUrl} onUploaded={setImageUrl} autoSave={true} />
+            <div className="flex items-center gap-2">
             <button onClick={() => onToggle(item.id, item.is_available)}
               className={`flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center transition-colors
                 ${item.is_available ? "bg-green-100 text-green-600 hover:bg-green-200" : "bg-red-100 text-red-400 hover:bg-red-200"}`}>
@@ -232,7 +243,6 @@ function MenuItemRow({
             </button>
             <div className="flex-1 min-w-0">
               <span className="font-body font-semibold text-sm text-brand-brown truncate block">{item.name}</span>
-              {item.image_url && <span className="text-[10px] text-brand-yellow/80 font-body flex items-center gap-1"><ImageIcon className="w-3 h-3" /> Fotoğraf var</span>}
             </div>
             <div className="flex items-center gap-1 flex-shrink-0">
               {hasPortions ? (
@@ -252,6 +262,7 @@ function MenuItemRow({
                 <Trash2 className="w-3.5 h-3.5" />
               </button>
             </div>
+          </div>
           </div>
         )}
       </div>
