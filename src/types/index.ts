@@ -17,9 +17,18 @@ export interface MenuItem {
   price?: number | null;
   is_available: boolean;
   sort_order: number;
+  image_url?: string | null;
   created_at: string;
 }
 
 export interface CategoryWithItems extends Category {
   menu_items: MenuItem[];
+}
+
+export interface Review {
+  id: string;
+  name: string;
+  rating: number;
+  comment?: string;
+  created_at: string;
 }
