@@ -87,29 +87,75 @@ function MenuItemCard({ item, hasPortions, index }: {
 }
 
 // ── MENÜ SEKMESİ — KATEGORİ IZGARASI ─────────────────────────
+// Kategori arka planı: önce kategorinin kendi fotoğrafı, sonra ilk ürün fotoğrafı
+function getCategoryBg(cat: CategoryWithItems): string | null {
+  if (cat.image_url) return cat.image_url;
+  const item = cat.menu_items.find((i) => i.is_available && i.image_url);
+  return item?.image_url || null;
+}
+
+// Kategori için gradient fallback renkleri
+const CAT_GRADIENTS: Record<string, string> = {
+  corbalar:         "from-amber-800 to-amber-600",
+  yemekler:         "from-red-900 to-red-700",
+  "durumler-doner": "from-yellow-800 to-yellow-600",
+  tatlilar:         "from-pink-800 to-pink-600",
+  icecekler:        "from-sky-800 to-sky-600",
+  salatalar:        "from-green-800 to-green-600",
+  pideler:          "from-orange-800 to-orange-600",
+  baliklar:         "from-blue-800 to-blue-600",
+  etler:            "from-stone-800 to-stone-600",
+};
+
+function getCatGradient(slug: string): string {
+  for (const [key, grad] of Object.entries(CAT_GRADIENTS)) {
+    if (slug.includes(key.split("-")[0])) return grad;
+  }
+  return "from-brand-brown to-brand-brown-light";
+}
+
 function MenuTab({ categories }: { categories: CategoryWithItems[] }) {
   const [selected, setSelected] = useState<CategoryWithItems | null>(null);
 
   if (selected) {
     const items = selected.menu_items.filter((i) => i.is_available);
+    const bgUrl = getCategoryBg(selected);
     return (
       <div>
-        <div className="flex items-center gap-3 mb-5">
-          <button onClick={() => setSelected(null)}
-            className="flex items-center justify-center w-10 h-10 rounded-xl bg-brand-brown/10 text-brand-brown hover:bg-brand-brown/20 transition-colors flex-shrink-0">
-            <ChevronLeft className="w-5 h-5" />
-          </button>
-          <div className="flex items-center gap-3">
-            <div className="text-brand-brown">{getCategoryIcon(selected.slug)}</div>
-            <div>
-              <h2 className="font-display text-2xl font-bold text-brand-brown leading-none">{selected.name}</h2>
+        {/* Geri butonu — seçili kategorinin fotoğrafı varsa hero göster */}
+        {bgUrl ? (
+          <div className="relative w-full h-36 rounded-2xl overflow-hidden mb-5">
+            <Image src={bgUrl} alt={selected.name} fill className="object-cover" sizes="100vw" />
+            <div className="absolute inset-0 bg-gradient-to-t from-brand-brown/90 via-brand-brown/40 to-transparent" />
+            <button onClick={() => setSelected(null)}
+              className="absolute top-3 left-3 flex items-center justify-center w-9 h-9 rounded-xl bg-white/20 backdrop-blur-sm text-white hover:bg-white/30 transition-colors">
+              <ChevronLeft className="w-5 h-5" />
+            </button>
+            <div className="absolute bottom-3 left-4">
+              <h2 className="font-display text-2xl font-bold text-white leading-none">{selected.name}</h2>
               {selected.has_portions && (
-                <p className="text-brand-brown/40 text-xs font-body mt-0.5">Tam ve yarım porsiyon</p>
+                <p className="text-white/60 text-xs font-body mt-0.5">Tam ve yarım porsiyon</p>
               )}
             </div>
           </div>
-        </div>
-        <div className="gold-divider w-full mb-5" />
+        ) : (
+          <div className="flex items-center gap-3 mb-5">
+            <button onClick={() => setSelected(null)}
+              className="flex items-center justify-center w-10 h-10 rounded-xl bg-brand-brown/10 text-brand-brown hover:bg-brand-brown/20 transition-colors flex-shrink-0">
+              <ChevronLeft className="w-5 h-5" />
+            </button>
+            <div className="flex items-center gap-3">
+              <div className="text-brand-brown">{getCategoryIcon(selected.slug)}</div>
+              <div>
+                <h2 className="font-display text-2xl font-bold text-brand-brown leading-none">{selected.name}</h2>
+                {selected.has_portions && (
+                  <p className="text-brand-brown/40 text-xs font-body mt-0.5">Tam ve yarım porsiyon</p>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+        {!bgUrl && <div className="gold-divider w-full mb-5" />}
         {items.length === 0 ? (
           <div className="text-center py-16 text-brand-brown/30 font-body">Bu kategoride ürün yok.</div>
         ) : (
@@ -123,30 +169,57 @@ function MenuTab({ categories }: { categories: CategoryWithItems[] }) {
     );
   }
 
+  // ── KATEGORİ IZGARASI ──
   return (
     <div>
       <p className="text-brand-brown/40 text-[10px] font-body tracking-widest uppercase mb-4 text-center">
-        Kategoriler
+        Menü Kategorileri
       </p>
       <div className="grid grid-cols-2 gap-3">
         {categories.map((cat) => {
           const count = cat.menu_items.filter((i) => i.is_available).length;
+          const bgUrl = getCategoryBg(cat);
+          const gradient = getCatGradient(cat.slug);
           return (
-            <button key={cat.id} onClick={() => setSelected(cat)}
-              className="group relative bg-white border-2 border-brand-yellow/25 rounded-2xl p-5 flex flex-col items-center gap-3
-                hover:border-brand-yellow hover:shadow-lg hover:bg-brand-yellow/5 transition-all active:scale-95">
-              <div className="w-16 h-16 rounded-2xl bg-brand-brown flex items-center justify-center text-brand-yellow
-                group-hover:bg-brand-brown-light transition-colors shadow-md">
-                {getCategoryIcon(cat.slug)}
+            <button
+              key={cat.id}
+              onClick={() => setSelected(cat)}
+              className="group relative overflow-hidden rounded-2xl shadow-md active:scale-95 transition-transform"
+              style={{ aspectRatio: "1 / 1" }}
+            >
+              {/* Arka plan: fotoğraf ya da gradient */}
+              {bgUrl ? (
+                <Image
+                  src={bgUrl} alt={cat.name} fill
+                  className="object-cover transition-transform duration-300 group-hover:scale-105"
+                  sizes="(max-width: 768px) 50vw, 25vw"
+                />
+              ) : (
+                <div className={`absolute inset-0 bg-gradient-to-br ${gradient}`} />
+              )}
+
+              {/* Koyu overlay */}
+              <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-black/10" />
+
+              {/* Altın ikon dairesi — ortada */}
+              <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
+                <div className="w-16 h-16 rounded-full bg-brand-yellow/90 backdrop-blur-sm flex items-center justify-center text-brand-brown shadow-xl border-2 border-brand-yellow">
+                  {getCategoryIcon(cat.slug)}
+                </div>
               </div>
-              <div className="text-center">
-                <p className="font-display font-bold text-brand-brown text-base leading-tight">{cat.name}</p>
-                <p className="text-brand-brown/40 text-xs font-body mt-0.5">{count} çeşit</p>
+
+              {/* Alt bilgi */}
+              <div className="absolute bottom-0 left-0 right-0 p-3 text-center">
+                <p className="font-display font-bold text-white text-base leading-tight drop-shadow-md">{cat.name}</p>
+                <p className="text-white/70 text-xs font-body mt-0.5">{count} çeşit</p>
               </div>
+
+              {/* Porsiyon rozeti */}
               {cat.has_portions && (
-                <span className="absolute top-2 right-2 text-[9px] bg-brand-yellow/30 text-brand-brown px-1.5 py-0.5 rounded-full font-body font-bold">
-                  T/Y
-                </span>
+                <div className="absolute top-2 right-2 bg-brand-yellow/90 rounded-full px-2 py-1 flex flex-col items-center shadow-md border border-brand-yellow">
+                  <span className="text-brand-brown text-[8px] font-body font-black leading-none">PORSİYON</span>
+                  <span className="text-brand-brown text-[8px] font-body font-black leading-none">SEÇENEKLERİ</span>
+                </div>
               )}
             </button>
           );

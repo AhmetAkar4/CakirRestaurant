@@ -50,3 +50,6 @@ DROP POLICY IF EXISTS "Public update categories" ON categories;
 DROP POLICY IF EXISTS "Public delete categories" ON categories;
 
 CREATE POLICY "Allow all categories" ON categories FOR ALL USING (true) WITH CHECK (true);
+
+-- Kategorilere image_url kolonu ekle
+ALTER TABLE categories ADD COLUMN IF NOT EXISTS image_url text;

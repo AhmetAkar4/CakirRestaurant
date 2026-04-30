@@ -4,6 +4,7 @@ export interface Category {
   slug: string;
   sort_order: number;
   has_portions: boolean;
+  image_url?: string | null;
   created_at: string;
 }
 

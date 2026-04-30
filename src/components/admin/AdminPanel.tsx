@@ -329,11 +329,22 @@ function CategoryCard({
 
   return (
     <div className="bg-white rounded-2xl shadow-sm border-2 border-gray-100 overflow-hidden">
+      {/* Kategori arka plan fotoğrafı — autoSave ile anında kaydolur */}
+      <div className="relative">
+        <ImageUploader
+          itemId={`cat-${category.id}`}
+          currentUrl={category.image_url}
+          onUploaded={async (url) => {
+            const supabase = createClient();
+            await supabase.from("categories").update({ image_url: url }).eq("id", category.id);
+          }}
+          autoSave={false}
+        />
+      </div>
       <div className="flex items-center justify-between px-4 py-3 bg-brand-brown/5 border-b border-gray-100">
         <button onClick={() => setOpen(!open)}
           className="flex items-center gap-2 font-body font-bold text-brand-brown flex-1 text-left">
           {open ? <ChevronDown className="w-4 h-4 text-brand-brown/50" /> : <ChevronRight className="w-4 h-4 text-brand-brown/50" />}
-          <span className="text-lg">{ICONS[category.slug] || "🍴"}</span>
           <span>{category.name}</span>
           <span className="ml-1 text-xs font-normal text-brand-brown/40">({category.menu_items.length})</span>
           {category.has_portions && (
